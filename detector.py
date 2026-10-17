@@ -3,7 +3,7 @@
 """
 import sys
 # sys.path.append("../")
-
+import os
 import logging
 import time
 import json
@@ -18,6 +18,9 @@ from config.prompts import (change_detect_whole_think_prompt,
                             change_detect_position_think_prompt,
                             change_detect_text_think_prompt,
                             text_similarity_prompt)
+
+from utils.detect_vision_show import simple_visualize
+
 
 
 setup_logging(log_file='./logs/icdtools.log')
@@ -41,7 +44,7 @@ class ICDDetector(object):
         self.max_time = max_time
         self.max_tokens = max_tokens
         self.root_cache_dir = root_cache_dir
-
+        self.box_norm = cfg.glm_box_norm
         self.llm_client = ChatLLM(model_string=cfg.glm_model_name,url=cfg.glm_url,api_key=cfg.glm_key,is_multimodal=True)
         # self.llm_client = ChatVLLM()
 
@@ -135,6 +138,10 @@ class ICDDetector(object):
     def parse_text_sim(self,output):
         if not output:
             return []
+        if isinstance(output,list):
+            return output
+        else:
+            output = output.replace('output:','').strip()
         try:
             return eval(output)
         except Exception as e:
@@ -176,11 +183,13 @@ class ICDDetector(object):
         return map_res
 
     def compute_area(self,item):
+        "计算检测框的面积，当检测描述相似时候，取面积大的结果"
         s1_box = item['s1_box']
         s2_box = item['s2_box']
         area1 = int((s1_box[2] - s1_box[0]) * (s1_box[3] - s1_box[1]))
         area2 = int((s2_box[2] - s2_box[0]) * (s2_box[3] - s2_box[1]))
         return area1+area2
+
 
     def filter_same_diff(self,mres):
         input_text = ''
@@ -189,25 +198,51 @@ class ICDDetector(object):
             input_text += f"S{i}: {text}\n"
         output = self.judge_text_similarity(input_text)
         text_sim_res = self.parse_text_sim(output)
+        print('text_sim_res',text_sim_res)
         if not text_sim_res:
             return mres
         fres = []
         for sim_list in text_sim_res:
             if 0<len(sim_list)<=1:
                 fres.append(mres[sim_list[0]])
+                continue
             sel_idx = -1
             max_area = 0
             for idx in sim_list:
                 area = self.compute_area(mres[idx])
                 if area > max_area:
                     sel_idx = idx
+                    max_area = area
             fres.append(mres[sel_idx])
         return fres
 
-    def detect(self, img1:Image, img2:Image) -> dict:
+    def save_result(self,data,save_path='./logs'):
+        img_name = data['img1_path'].split('/')[-1].split('.')[0]
+        detect_save_path = os.path.join(save_path,f"detect_results/{img_name}_dres.json")
+        vision_save_path = os.path.join(save_path,f"vision_results/{img_name}_dres.jpg")
+        with open(detect_save_path, 'w') as f:
+            f.write(json.dumps(data, ensure_ascii=False, indent=4))
+        simple_visualize(data,vision_save_path,mode=self.box_norm)
+        logging.info(f"detect result save:{detect_save_path} and vision result save:{vision_save_path}")
+
+
+
+    def detect(self, img1_path:str, img2_path:str) -> dict:
         """
         detect change between images
         """
+        with open(img1_path, "rb") as f:
+            img1 = f.read()
+        with open(img2_path, "rb") as f:
+            img2 = f.read()
+
+        img1 = cv2.imread(img1_path)
+        img2 = cv2.imread(img2_path)
+        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+        w1_org, h1_org = img1.shape[1], img1.shape[0]
+        w2_org, h2_org = img2.shape[1], img2.shape[0]
+
         # whole detect
         wres = self.detect_whole_diff(img1,img2)
 
@@ -223,19 +258,17 @@ class ICDDetector(object):
 
         dres = self.filter_same_diff(mres)
         logging.info(f"the final detection results :{dres}")
+
+        output_data = {'img1_path':img1_path, 'img2_path':img2_path,'dres':dres}
+        self.save_result(output_data)
         return dres
 
 
 if __name__ == "__main__":
     img1_path = "/home/cjy/mystudy/octotools-main/icdtools/test_examples/f1-1.png"
     img2_path = "/home/cjy/mystudy/octotools-main/icdtools/test_examples/f1-2.png"
-    with open(img1_path, "rb") as f:
-        img1 = f.read()
-
-    with open(img2_path, "rb") as f:
-        img2 = f.read()
 
     cfg = Config()
     icd = ICDDetector(cfg)
-    res = icd.detect(img1,img2)
+    res = icd.detect(img1_path,img2_path)
 

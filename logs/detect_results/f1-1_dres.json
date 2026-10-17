@@ -1,0 +1,36 @@
+{
+    "img1_path": "/home/cjy/mystudy/octotools-main/icdtools/test_examples/f1-1.png",
+    "img2_path": "/home/cjy/mystudy/octotools-main/icdtools/test_examples/f1-2.png",
+    "dres": [
+        {
+            "s1_box": [
+                712,
+                805,
+                922,
+                859
+            ],
+            "s2_box": [
+                726,
+                795,
+                942,
+                857
+            ],
+            "dres": "颜色差异，第一张图片底部的小猫衣服图案是红色，第二张图片底部的小猫衣服图案是橙色，两张图片存在局部颜色差异"
+        },
+        {
+            "s1_box": [
+                154,
+                868,
+                830,
+                937
+            ],
+            "s2_box": [
+                154,
+                866,
+                833,
+                937
+            ],
+            "dres": "标点符号不同，图1文本为“未经蒸煮、干燥、冷冻、水解等处理过程”，图2文本为“未经蒸煮，干燥，冷冻，水解等处理过程”，图1为顿号，图2为逗号"
+        }
+    ]
+}

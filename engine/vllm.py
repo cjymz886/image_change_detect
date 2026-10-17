@@ -29,7 +29,7 @@ class ChatVLLM(EngineLM, CachedEngine):
         model_string="qwen3.5-9b",
         system_prompt=DEFAULT_SYSTEM_PROMPT,
         is_multimodal: bool=True,
-        use_cache: bool=False,
+        use_cache: bool=True,
         **kwargs):
         """
         :param model_string:

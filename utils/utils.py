@@ -10,7 +10,6 @@ logger = logging.getLogger(__name__)
 
 def (func):
     """计时器装饰器，用于记录函数执行时间"""
-
     def wrapper(*args, **kwargs):
         start_time = time.time()
         func_name = func.__name__

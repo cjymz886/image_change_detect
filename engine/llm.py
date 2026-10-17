@@ -26,7 +26,7 @@ class ChatLLM(EngineLM, CachedEngine):
             api_key: str = None,
             system_prompt=DEFAULT_SYSTEM_PROMPT,
             is_multimodal: bool = True,
-            use_cache: bool = False,
+            use_cache: bool = True,
             **kwargs):
         """
         :param model_string:
